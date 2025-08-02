@@ -134,7 +134,7 @@
 
     <script>
         const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR0aRAL1eeeIq5GC-nxExaQWyxG5em_W_Vf1Fug5E1AdqfITNqYGYMzCj7vrMR68WdKbnQOiNDY28Oa/pub?gid=1092300572&single=true&output=csv';
-        let fullPiketData = []; // Store all parsed rows from CSV
+        let fullPiketData = [];
 
         const loadingSection = document.getElementById('loading');
         const piketInfoSection = document.getElementById('piket-info');
@@ -156,8 +156,6 @@
             'MENGEPEL'
         ];
 
-        // These are the column indices (0-indexed) for the names of the tasks
-        // in the *matched* data row (C=2, D=3, ..., L=11)
         const columnIndicesForTasksInMatchedRow = [
             2,  // ANGKAT BANGKU (first) - C
             3,  // ANGKAT BANGKU (second) - D
@@ -192,16 +190,18 @@
         function parseCSV(csv) {
             const lines = csv.split('\n').filter(line => line.trim() !== '');
 
-            if (lines.length < 2) { // Need at least header + one data row
+            if (lines.length < 2) {
                 console.warn('CSV data is empty or malformed.');
                 piketTableBody.innerHTML = '<tr><td colspan="2">Data CSV tidak valid.</td></tr>';
                 return;
             }
 
-            // Store all data rows (skipping header).
-            // So, if "Sabtu, 2 Agustus 2025" is on row 13 in the spreadsheet,
-            // it will be at fullPiketData[12].
             fullPiketData = lines.slice(1).map(line => line.split(',').map(cell => cell.trim()));
+
+            // --- DEBUGGING START ---
+            console.log("Full Parsed Piket Data (excluding header):", fullPiketData);
+            // --- DEBUGGING END ---
+
             displayPiketSchedule();
         }
 
@@ -209,32 +209,43 @@
             piketInfoSection.classList.remove('hidden');
             piketScheduleSection.classList.remove('hidden');
 
-            const today = new Date();
+            // Set the target date explicitly for testing
+            const targetDate = new Date(); // Use current date for production
+            // If you want to force test with 2 Agustus 2025:
+            // const targetDate = new Date('2025-08-02T12:00:00'); // Year-Month-Day format. Month is 0-indexed for JS Date (August is 7)
+
             const optionsDay = { weekday: 'long' };
             const optionsDate = { day: 'numeric', month: 'long' };
-            const todayDay = today.toLocaleDateString('id-ID', optionsDay);
-            const todayDate = today.toLocaleDateString('id-ID', optionsDate);
+
+            const todayDay = targetDate.toLocaleDateString('id-ID', optionsDay);
+            const todayDate = targetDate.toLocaleDateString('id-ID', optionsDate);
 
             piketDaySpan.textContent = todayDay;
             piketDateSpan.textContent = todayDate;
 
-            piketTableBody.innerHTML = ''; // Clear previous data
+            piketTableBody.innerHTML = '';
 
             let relevantPiketRow = null;
 
-            // Iterate through fullPiketData to find the row that matches today's day and date
-            // The first row in fullPiketData corresponds to line 2 in the CSV, and so on.
+            // --- DEBUGGING START ---
+            console.log("Looking for today:", todayDay, todayDate);
+            // --- DEBUGGING END ---
+
             for (let i = 0; i < fullPiketData.length; i++) {
                 const row = fullPiketData[i];
-                // Ensure row has at least columns for Day (0) and Date (1)
                 if (row.length > 1) {
                     const csvDay = row[0].trim().toLowerCase();
                     const csvDate = row[1].trim().toLowerCase();
 
-                    // For debugging: console.log(`Checking CSV row: Day=${csvDay}, Date=${csvDate} vs Today: Day=${todayDay.toLowerCase()}, Date=${todayDate.toLowerCase()}`);
+                    // --- DEBUGGING START ---
+                    console.log(`Checking CSV row ${i + 2} (original spreadsheet row): Day='${csvDay}', Date='${csvDate}'`);
+                    // --- DEBUGGING END ---
 
                     if (csvDay === todayDay.toLowerCase() && csvDate === todayDate.toLowerCase()) {
                         relevantPiketRow = row;
+                        // --- DEBUGGING START ---
+                        console.log("MATCH FOUND! Relevant Row:", relevantPiketRow);
+                        // --- DEBUGGING END ---
                         break;
                     }
                 }
@@ -248,7 +259,6 @@
 
                     taskCell.textContent = taskName;
 
-                    // Get the correct column index for the current task from the pre-defined array
                     const currentTaskColumnIndex = columnIndicesForTasksInMatchedRow[index];
 
                     let petugasName = '';
@@ -257,17 +267,19 @@
                     }
 
                     if (petugasName === '') {
-                        petugasName = 'N/A'; // If value is empty
+                        petugasName = 'N/A';
                     }
 
                     petugasCell.textContent = petugasName;
                 });
             } else {
+                // --- DEBUGGING START ---
+                console.log("No matching piket data found for today.");
+                // --- DEBUGGING END ---
                 piketTableBody.innerHTML = '<tr><td colspan="2">Tidak ada data piket untuk hari ini.</td></tr>';
             }
         }
 
-        // Fetch data when the page loads
         fetchCSVData();
     </script>
 </body>
