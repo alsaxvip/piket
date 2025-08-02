@@ -143,21 +143,6 @@
         const piketDaySpan = document.getElementById('piket-day');
         const piketDateSpan = document.getElementById('piket-date');
 
-        // Column indices for the names in the CSV (0-indexed)
-        // A=0, B=1, C=2, D=3, E=4, F=5, G=6, H=7, I=8, J=9, K=10, L=11
-        const taskColumnIndices = {
-            'ANGKAT BANGKU_1': 2, // Corresponds to column C
-            'ANGKAT BANGKU_2': 3, // Still column C, just next row for the second 'angkat bangku'
-            'LAP JENDELA': 4,    // Column C
-            'BUANG SAMPAH': 5,   // Column C
-            'PAPAN TULIS & KOLONG MEJA': 6, // Column C
-            'BOX HP DAN PANGGIL GURU': 7, // Column C
-            'MENYAPU_1': 8,      // Column C
-            'MENYAPU_2': 9,      // Column C
-            'MENGEPEL_1': 10,     // Column C
-            'MENGEPEL_2': 11      // Column C
-        };
-
         const tasksList = [
             'ANGKAT BANGKU',
             'ANGKAT BANGKU',
@@ -171,6 +156,22 @@
             'MENGEPEL'
         ];
 
+        // These are the column indices (0-indexed) for the names of the tasks
+        // in the *matched* data row (C=2, D=3, ..., L=11)
+        const columnIndicesForTasksInMatchedRow = [
+            2,  // ANGKAT BANGKU (first) - C
+            3,  // ANGKAT BANGKU (second) - D
+            4,  // LAP JENDELA - E
+            5,  // BUANG SAMPAH - F
+            6,  // PAPAN TULIS & KOLONG MEJA - G
+            7,  // BOX HP DAN PANGGIL GURU - H
+            8,  // MENYAPU (first) - I
+            9,  // MENYAPU (second) - J
+            10, // MENGEPEL (first) - K
+            11  // MENGEPEL (second) - L
+        ];
+
+
         async function fetchCSVData() {
             loadingSection.classList.remove('hidden');
             try {
@@ -182,7 +183,7 @@
                 parseCSV(csvText);
             } catch (error) {
                 console.error('Error fetching CSV:', error);
-                // Optionally display an error message on the page
+                piketTableBody.innerHTML = '<tr><td colspan="2">Gagal memuat data piket.</td></tr>';
             } finally {
                 loadingSection.classList.add('hidden');
             }
@@ -191,12 +192,15 @@
         function parseCSV(csv) {
             const lines = csv.split('\n').filter(line => line.trim() !== '');
 
-            if (lines.length < 3) { // Need at least header + 2 data rows (Hari/Tanggal row + first piket row)
+            if (lines.length < 2) { // Need at least header + one data row
                 console.warn('CSV data is empty or malformed.');
+                piketTableBody.innerHTML = '<tr><td colspan="2">Data CSV tidak valid.</td></tr>';
                 return;
             }
 
-            // Store all data rows (skipping header)
+            // Store all data rows (skipping header).
+            // So, if "Sabtu, 2 Agustus 2025" is on row 13 in the spreadsheet,
+            // it will be at fullPiketData[12].
             fullPiketData = lines.slice(1).map(line => line.split(',').map(cell => cell.trim()));
             displayPiketSchedule();
         }
@@ -208,29 +212,35 @@
             const today = new Date();
             const optionsDay = { weekday: 'long' };
             const optionsDate = { day: 'numeric', month: 'long' };
-            const todayDay = today.toLocaleDateString('id-ID', optionsDay); // e.g., "Sabtu"
-            const todayDate = today.toLocaleDateString('id-ID', optionsDate); // e.g., "2 Agustus 2025"
+            const todayDay = today.toLocaleDateString('id-ID', optionsDay);
+            const todayDate = today.toLocaleDateString('id-ID', optionsDate);
 
             piketDaySpan.textContent = todayDay;
             piketDateSpan.textContent = todayDate;
 
             piketTableBody.innerHTML = ''; // Clear previous data
 
-            // Find the row in fullPiketData that matches today's day and date
             let relevantPiketRow = null;
-            // Iterate from the second row of the data (index 1 of fullPiketData, which is row 2 of original sheet)
-            // since A2 and B2 are the day and date, and names start from row 3 (index 2 of fullPiketData)
+
+            // Iterate through fullPiketData to find the row that matches today's day and date
+            // The first row in fullPiketData corresponds to line 2 in the CSV, and so on.
             for (let i = 0; i < fullPiketData.length; i++) {
                 const row = fullPiketData[i];
-                if (row[0].toLowerCase() === todayDay.toLowerCase() && row[1].toLowerCase() === todayDate.toLowerCase()) {
-                    relevantPiketRow = row;
-                    break;
+                // Ensure row has at least columns for Day (0) and Date (1)
+                if (row.length > 1) {
+                    const csvDay = row[0].trim().toLowerCase();
+                    const csvDate = row[1].trim().toLowerCase();
+
+                    // For debugging: console.log(`Checking CSV row: Day=${csvDay}, Date=${csvDate} vs Today: Day=${todayDay.toLowerCase()}, Date=${todayDate.toLowerCase()}`);
+
+                    if (csvDay === todayDay.toLowerCase() && csvDate === todayDate.toLowerCase()) {
+                        relevantPiketRow = row;
+                        break;
+                    }
                 }
             }
 
             if (relevantPiketRow) {
-                let taskCounter = {}; // To handle duplicate task names like "ANGKAT BANGKU"
-
                 tasksList.forEach((taskName, index) => {
                     const row = piketTableBody.insertRow();
                     const taskCell = row.insertCell();
@@ -238,46 +248,16 @@
 
                     taskCell.textContent = taskName;
 
-                    // Determine which column to pick the name from based on the task and its order
-                    // Since all tasks (C3-L12) are in separate rows in the spreadsheet,
-                    // we need to pick the name from the corresponding row for that task.
-                    // The 'relevantPiketRow' now contains the data for the matched day/date.
-                    // The names for "ANGKAT BANGKU (first)", "ANGKAT BANGKU (second)", etc.,
-                    // are in subsequent rows in the *original* spreadsheet, but they are all in
-                    // the *same column* (column C, D, E, etc., as per your example) for a given day.
-                    // The challenge description: "Angkat Bangku C3, Angkat Bangku C4, ... Mengepel L12"
-                    // This means for a given day (e.g., Saturday), the first "Angkat Bangku" person is in column C
-                    // of the row for that day, the second "Angkat Bangku" person is in column D, etc.
-                    // My previous interpretation was that C3 was the first name, C4 the second etc regardless of row,
-                    // which is incorrect based on your clarification "Data dimulai dari baris kedua. Contoh Hari berada di A2, Tanggal B2, Angkat Bangku c3, Angkat Bangku c4, dan begitu seterusnya sampai mengepel di l2".
+                    // Get the correct column index for the current task from the pre-defined array
+                    const currentTaskColumnIndex = columnIndicesForTasksInMatchedRow[index];
 
-                    // Let's re-evaluate column mapping based on the clarified structure:
-                    // A2: Hari, B2: Tanggal
-                    // C3: Angkat Bangku 1, C4: Angkat Bangku 2 ... up to L12 for Mengepel 2
-                    // This means for a *specific day/date (A2/B2)*, the names are in a *single row* from C2 to L2.
-                    // So, we need to find the specific row in the CSV that matches `todayDay` and `todayDate`.
-                    // And then, from that specific row, we extract the names from columns C through L.
+                    let petugasName = '';
+                    if (relevantPiketRow[currentTaskColumnIndex] !== undefined) {
+                        petugasName = relevantPiketRow[currentTaskColumnIndex].trim();
+                    }
 
-                    // Adjust column indexing for the *current row* that matches today's date
-                    // C is index 2, D is index 3, ..., L is index 11
-                    const columnIndicesForTasksInRow = [
-                        2, // ANGKAT BANGKU (first) - C
-                        3, // ANGKAT BANGKU (second) - D
-                        4, // LAP JENDELA - E
-                        5, // BUANG SAMPAH - F
-                        6, // PAPAN TULIS & KOLONG MEJA - G
-                        7, // BOX HP DAN PANGGIL GURU - H
-                        8, // MENYAPU (first) - I
-                        9, // MENYAPU (second) - J
-                        10, // MENGEPEL (first) - K
-                        11  // MENGEPEL (second) - L
-                    ];
-
-                    const currentTaskColumnIndex = columnIndicesForTasksInRow[index];
-                    let petugasName = relevantPiketRow[currentTaskColumnIndex];
-
-                    if (petugasName === undefined || petugasName === null || petugasName.trim() === '') {
-                        petugasName = 'N/A';
+                    if (petugasName === '') {
+                        petugasName = 'N/A'; // If value is empty
                     }
 
                     petugasCell.textContent = petugasName;
