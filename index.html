@@ -209,7 +209,6 @@
             piketInfoSection.classList.remove('hidden');
             piketScheduleSection.classList.remove('hidden');
 
-            // Set the target date explicitly for testing
             const targetDate = new Date(); // Use current date for production
             // If you want to force test with 2 Agustus 2025:
             // const targetDate = new Date('2025-08-02T12:00:00'); // Year-Month-Day format. Month is 0-indexed for JS Date (August is 7)
@@ -234,14 +233,17 @@
             for (let i = 0; i < fullPiketData.length; i++) {
                 const row = fullPiketData[i];
                 if (row.length > 1) {
-                    const csvDay = row[0].trim().toLowerCase();
-                    const csvDate = row[1].trim().toLowerCase();
+                    // *** PERUBAHAN DI SINI: SESUAIKAN DENGAN STRUKTUR CSV BARU ***
+                    // Kolom A (indeks 0) adalah Tanggal
+                    // Kolom B (indeks 1) adalah Hari
+                    const csvDate = row[0].trim().toLowerCase();
+                    const csvDay = row[1].trim().toLowerCase();
 
                     // --- DEBUGGING START ---
-                    console.log(`Checking CSV row ${i + 2} (original spreadsheet row): Day='${csvDay}', Date='${csvDate}'`);
+                    console.log(`Checking CSV row ${i + 2} (original spreadsheet row): Date='${csvDate}', Day='${csvDay}'`);
                     // --- DEBUGGING END ---
 
-                    if (csvDay === todayDay.toLowerCase() && csvDate === todayDate.toLowerCase()) {
+                    if (csvDate === todayDate.toLowerCase() && csvDay === todayDay.toLowerCase()) {
                         relevantPiketRow = row;
                         // --- DEBUGGING START ---
                         console.log("MATCH FOUND! Relevant Row:", relevantPiketRow);
