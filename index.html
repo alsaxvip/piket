@@ -7,130 +7,74 @@
     <style>
         body {
             font-family: Arial, sans-serif;
-            margin: 20px;
-            background-color: #ECF8F9; /* Warna latar belakang dari gambar */
+            margin: 0;
+            padding: 20px;
+            background-color: #FFFFFF; /* Latar belakang putih */
             color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
         .container {
-            max-width: 900px;
-            margin: 0 auto;
+            max-width: 1200px; /* Lebar maksimum untuk konten */
+            width: 100%;
             background-color: #FFFFFF;
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
         h1 {
-            color: #3F72AF; /* Warna biru gelap dari gambar */
+            color: #4CAF50; /* Warna hijau dominan */
             text-align: center;
-            margin-bottom: 30px;
+            margin-bottom: 20px;
         }
-        table {
+        iframe {
             width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
+            height: 800px; /* Sesuaikan tinggi ini sesuai kebutuhan agar spreadsheet terlihat penuh */
+            border: 1px solid #ccc; /* Border opsional untuk iframe */
+            display: block;
+            margin: 0 auto;
         }
-        th, td {
-            border: 1px solid #ddd;
-            padding: 10px;
+        .instructions {
+            background-color: #f0f0f0;
+            padding: 15px;
+            border-left: 5px solid #4CAF50;
+            margin-top: 30px;
+            margin-bottom: 20px;
             text-align: left;
+            font-size: 0.9em;
+            color: #555;
         }
-        th {
-            background-color: #DBE2EF; /* Warna biru muda dari gambar */
-            color: #3F72AF; /* Warna biru gelap dari gambar */
-            font-weight: bold;
+        .instructions p {
+            margin: 5px 0;
         }
-        tr:nth-child(even) {
-            background-color: #F8F9FA;
+        .instructions ol {
+            margin-top: 10px;
+            margin-bottom: 0;
+            padding-left: 20px;
         }
-        .loading {
-            text-align: center;
-            padding: 20px;
-            font-style: italic;
-            color: #666;
-        }
-        .error {
-            color: red;
-            text-align: center;
-            padding: 20px;
+        .instructions li {
+            margin-bottom: 5px;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>PETUGAS PIKET 8D</h1>
-        <div id="data-table">
-            <p class="loading">Memuat data...</p>
+        <h1>PIKET 8D</h1>
+
+        <div class="instructions">
+            <p>Untuk menampilkan spreadsheet dengan format yang sama persis seperti di Google Sheet, Anda perlu mendapatkan kode *embed* dari Google Sheet itu sendiri. Ikuti langkah-langkah ini:</p>
+            <ol>
+                <li>Buka Google Sheet Anda.</li>
+                <li>Pilih menu **File > Bagikan > Publikasikan ke web**.</li>
+                <li>Pada jendela yang muncul, pilih tab **Sematkan**.</li>
+                <li>Pilih lembar kerja yang ingin Anda sematkan (misalnya, seluruh dokumen atau lembar tertentu).</li>
+                <li>Klik tombol **Publikasikan**.</li>
+                <li>Salin kode `<iframe>` yang diberikan.</li>
+                <li>Tempelkan kode tersebut di bawah baris ini, ganti `https://docs.google.com/spreadsheets/d/e/2PACX-1vR0aRAL1eeeIq5GC-nxExaQWyxG5em_W_Vf1Fug5E1AdqfITNqYGYMzCj7vrMR68WdKbnQOiNDY28Oa/pubhtml?gid=535251432&single=true`.</li>
+            </ol>
         </div>
-    </div>
 
-    <script>
-        const googleSheetUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR0aRAL1eeeIq5GC-nxExaQWyxG5em_W_Vf1Fug5E1AdqfITNqYGYMzCj7vrMR68WdKbnQOiNDY28Oa/pub?gid=535251432&single=true&output=csv';
-
-        async function fetchGoogleSheetData() {
-            try {
-                const response = await fetch(googleSheetUrl);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const csvData = await response.text();
-                return parseCsv(csvData);
-            } catch (error) {
-                console.error("Gagal mengambil data Google Sheet:", error);
-                document.getElementById('data-table').innerHTML = '<p class="error">Gagal memuat data. Silakan coba lagi nanti.</p>';
-                return null;
-            }
-        }
-
-        function parseCsv(csv) {
-            const lines = csv.split('\n').filter(line => line.trim() !== ''); // Filter baris kosong
-            const headers = lines[0].split(',');
-            const data = [];
-
-            for (let i = 1; i < lines.length; i++) {
-                const values = lines[i].split(',');
-                if (values.length === headers.length) { // Pastikan jumlah kolom cocok
-                    let row = {};
-                    for (let j = 0; j < headers.length; j++) {
-                        row[headers[j].trim()] = values[j].trim();
-                    }
-                    data.push(row);
-                }
-            }
-            return data;
-        }
-
-        function renderTable(data) {
-            if (!data || data.length === 0) {
-                document.getElementById('data-table').innerHTML = '<p class="loading">Tidak ada data yang tersedia.</p>';
-                return;
-            }
-
-            let tableHtml = '<table><thead><tr>';
-            const headers = Object.keys(data[0]);
-            headers.forEach(header => {
-                tableHtml += `<th>${header}</th>`;
-            });
-            tableHtml += '</tr></thead><tbody>';
-
-            data.forEach(row => {
-                tableHtml += '<tr>';
-                headers.forEach(header => {
-                    tableHtml += `<td>${row[header]}</td>`;
-                });
-                tableHtml += '</tr>';
-            });
-
-            tableHtml += '</tbody></table>';
-            document.getElementById('data-table').innerHTML = tableHtml;
-        }
-
-        // Panggil fungsi saat DOM selesai dimuat
-        document.addEventListener('DOMContentLoaded', async () => {
-            const data = await fetchGoogleSheetData();
-            if (data) {
-                renderTable(data);
-            }
-        });
-    </script>
+        </div>
 </body>
 </html>
