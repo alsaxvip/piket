@@ -3,286 +3,134 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PIKET 8D</title>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <title>PIKET</title>
     <style>
-        :root {
-            --green: #4CAF50;
-            --white: #FFFFFF;
-            --yellow: #FFC107;
-            --light-grey: #f2f2f2;
-        }
-
         body {
-            font-family: 'Roboto', sans-serif;
-            margin: 0;
-            padding: 20px;
-            background-color: var(--light-grey);
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background-color: #ECF8F9; /* Warna latar belakang dari gambar */
             color: #333;
         }
-
         .container {
             max-width: 900px;
             margin: 0 auto;
-            background-color: var(--white);
-            padding: 30px;
+            background-color: #FFFFFF;
+            padding: 20px;
             border-radius: 8px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
         }
-
-        header {
+        h1 {
+            color: #3F72AF; /* Warna biru gelap dari gambar */
             text-align: center;
             margin-bottom: 30px;
         }
-
-        header h1 {
-            color: var(--green);
-            margin: 0;
-            font-size: 2.2em;
-        }
-
-        #piket-info {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 15px;
-            margin-bottom: 30px;
-            padding: 15px;
-            background-color: var(--light-grey);
-            border-radius: 5px;
-            border-left: 5px solid var(--yellow);
-        }
-
-        .info-item strong {
-            color: var(--green);
-        }
-
-        .info-item span {
-            display: block;
-            margin-top: 5px;
-        }
-
-        .hidden {
-            display: none;
-        }
-
         table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 20px;
         }
-
-        table th, table td {
+        th, td {
             border: 1px solid #ddd;
-            padding: 12px;
+            padding: 10px;
+            text-align: left;
+        }
+        th {
+            background-color: #DBE2EF; /* Warna biru muda dari gambar */
+            color: #3F72AF; /* Warna biru gelap dari gambar */
+            font-weight: bold;
+        }
+        tr:nth-child(even) {
+            background-color: #F8F9FA;
+        }
+        .loading {
             text-align: center;
-        }
-
-        table th {
-            background-color: var(--green);
-            color: var(--white);
-            text-transform: uppercase;
-        }
-
-        table tr:nth-child(even) {
-            background-color: #f9f9f9;
-        }
-
-        table tr:hover {
-            background-color: #f1f1f1;
-        }
-
-        #loading {
-            text-align: center;
-            font-size: 1.2em;
+            padding: 20px;
+            font-style: italic;
             color: #666;
-            margin-top: 50px;
+        }
+        .error {
+            color: red;
+            text-align: center;
+            padding: 20px;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>PIKET 8D</h1>
-        </header>
-
-        <section id="loading">
-            loading data...
-        </section>
-
-        <section id="piket-info" class="hidden">
-            <div class="info-item">
-                <strong>HARI:</strong> <span id="piket-day"></span>
-            </div>
-            <div class="info-item">
-                <strong>TANGGAL:</strong> <span id="piket-date"></span>
-            </div>
-        </section>
-
-        <section id="piket-schedule" class="hidden">
-            <table id="piket-table">
-                <thead>
-                    <tr>
-                        <th>TUGAS</th>
-                        <th>PETUGAS</th>
-                    </tr>
-                </thead>
-                <tbody>
-                </tbody>
-            </table>
-        </section>
+        <h1>PETUGAS PIKET 8D</h1>
+        <div id="data-table">
+            <p class="loading">Memuat data...</p>
+        </div>
     </div>
 
     <script>
-        const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR0aRAL1eeeIq5GC-nxExaQWyxG5em_W_Vf1Fug5E1AdqfITNqYGYMzCj7vrMR68WdKbnQOiNDY28Oa/pub?gid=1092300572&single=true&output=csv';
-        let fullPiketData = [];
+        const googleSheetUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR0aRAL1eeeIq5GC-nxExaQWyxG5em_W_Vf1Fug5E1AdqfITNqYGYMzCj7vrMR68WdKbnQOiNDY28Oa/pub?gid=535251432&single=true&output=csv';
 
-        const loadingSection = document.getElementById('loading');
-        const piketInfoSection = document.getElementById('piket-info');
-        const piketScheduleSection = document.getElementById('piket-schedule');
-        const piketTableBody = document.querySelector('#piket-table tbody');
-        const piketDaySpan = document.getElementById('piket-day');
-        const piketDateSpan = document.getElementById('piket-date');
-
-        const tasksList = [
-            'ANGKAT BANGKU',
-            'ANGKAT BANGKU',
-            'LAP JENDELA',
-            'BUANG SAMPAH',
-            'PAPAN TULIS & KOLONG MEJA',
-            'BOX HP DAN PANGGIL GURU',
-            'MENYAPU',
-            'MENYAPU',
-            'MENGEPEL',
-            'MENGEPEL'
-        ];
-
-        const columnIndicesForTasksInMatchedRow = [
-            2,  // ANGKAT BANGKU (first) - C
-            3,  // ANGKAT BANGKU (second) - D
-            4,  // LAP JENDELA - E
-            5,  // BUANG SAMPAH - F
-            6,  // PAPAN TULIS & KOLONG MEJA - G
-            7,  // BOX HP DAN PANGGIL GURU - H
-            8,  // MENYAPU (first) - I
-            9,  // MENYAPU (second) - J
-            10, // MENGEPEL (first) - K
-            11  // MENGEPEL (second) - L
-        ];
-
-
-        async function fetchCSVData() {
-            loadingSection.classList.remove('hidden');
+        async function fetchGoogleSheetData() {
             try {
-                const response = await fetch(CSV_URL);
+                const response = await fetch(googleSheetUrl);
                 if (!response.ok) {
                     throw new Error(`HTTP error! status: ${response.status}`);
                 }
-                const csvText = await response.text();
-                parseCSV(csvText);
+                const csvData = await response.text();
+                return parseCsv(csvData);
             } catch (error) {
-                console.error('Error fetching CSV:', error);
-                piketTableBody.innerHTML = '<tr><td colspan="2">Gagal memuat data piket.</td></tr>';
-            } finally {
-                loadingSection.classList.add('hidden');
+                console.error("Gagal mengambil data Google Sheet:", error);
+                document.getElementById('data-table').innerHTML = '<p class="error">Gagal memuat data. Silakan coba lagi nanti.</p>';
+                return null;
             }
         }
 
-        function parseCSV(csv) {
-            const lines = csv.split('\n').filter(line => line.trim() !== '');
+        function parseCsv(csv) {
+            const lines = csv.split('\n').filter(line => line.trim() !== ''); // Filter baris kosong
+            const headers = lines[0].split(',');
+            const data = [];
 
-            if (lines.length < 2) {
-                console.warn('CSV data is empty or malformed.');
-                piketTableBody.innerHTML = '<tr><td colspan="2">Data CSV tidak valid.</td></tr>';
+            for (let i = 1; i < lines.length; i++) {
+                const values = lines[i].split(',');
+                if (values.length === headers.length) { // Pastikan jumlah kolom cocok
+                    let row = {};
+                    for (let j = 0; j < headers.length; j++) {
+                        row[headers[j].trim()] = values[j].trim();
+                    }
+                    data.push(row);
+                }
+            }
+            return data;
+        }
+
+        function renderTable(data) {
+            if (!data || data.length === 0) {
+                document.getElementById('data-table').innerHTML = '<p class="loading">Tidak ada data yang tersedia.</p>';
                 return;
             }
 
-            fullPiketData = lines.slice(1).map(line => line.split(',').map(cell => cell.trim()));
+            let tableHtml = '<table><thead><tr>';
+            const headers = Object.keys(data[0]);
+            headers.forEach(header => {
+                tableHtml += `<th>${header}</th>`;
+            });
+            tableHtml += '</tr></thead><tbody>';
 
-            // --- DEBUGGING START ---
-            console.log("Full Parsed Piket Data (excluding header):", fullPiketData);
-            // --- DEBUGGING END ---
-
-            displayPiketSchedule();
-        }
-
-        function displayPiketSchedule() {
-            piketInfoSection.classList.remove('hidden');
-            piketScheduleSection.classList.remove('hidden');
-
-            const targetDate = new Date(); // Use current date for production
-            // If you want to force test with 2 Agustus 2025:
-            // const targetDate = new Date('2025-08-02T12:00:00'); // Year-Month-Day format. Month is 0-indexed for JS Date (August is 7)
-
-            const optionsDay = { weekday: 'long' };
-            const optionsDate = { day: 'numeric', month: 'long' };
-
-            const todayDay = targetDate.toLocaleDateString('id-ID', optionsDay);
-            const todayDate = targetDate.toLocaleDateString('id-ID', optionsDate);
-
-            piketDaySpan.textContent = todayDay;
-            piketDateSpan.textContent = todayDate;
-
-            piketTableBody.innerHTML = '';
-
-            let relevantPiketRow = null;
-
-            // --- DEBUGGING START ---
-            console.log("Looking for today:", todayDay, todayDate);
-            // --- DEBUGGING END ---
-
-            for (let i = 0; i < fullPiketData.length; i++) {
-                const row = fullPiketData[i];
-                if (row.length > 1) {
-                    // *** PERUBAHAN DI SINI: SESUAIKAN DENGAN STRUKTUR CSV BARU ***
-                    // Kolom A (indeks 0) adalah Tanggal
-                    // Kolom B (indeks 1) adalah Hari
-                    const csvDate = row[0].trim().toLowerCase();
-                    const csvDay = row[1].trim().toLowerCase();
-
-                    // --- DEBUGGING START ---
-                    console.log(`Checking CSV row ${i + 2} (original spreadsheet row): Date='${csvDate}', Day='${csvDay}'`);
-                    // --- DEBUGGING END ---
-
-                    if (csvDate === todayDate.toLowerCase() && csvDay === todayDay.toLowerCase()) {
-                        relevantPiketRow = row;
-                        // --- DEBUGGING START ---
-                        console.log("MATCH FOUND! Relevant Row:", relevantPiketRow);
-                        // --- DEBUGGING END ---
-                        break;
-                    }
-                }
-            }
-
-            if (relevantPiketRow) {
-                tasksList.forEach((taskName, index) => {
-                    const row = piketTableBody.insertRow();
-                    const taskCell = row.insertCell();
-                    const petugasCell = row.insertCell();
-
-                    taskCell.textContent = taskName;
-
-                    const currentTaskColumnIndex = columnIndicesForTasksInMatchedRow[index];
-
-                    let petugasName = '';
-                    if (relevantPiketRow[currentTaskColumnIndex] !== undefined) {
-                        petugasName = relevantPiketRow[currentTaskColumnIndex].trim();
-                    }
-
-                    if (petugasName === '') {
-                        petugasName = 'N/A';
-                    }
-
-                    petugasCell.textContent = petugasName;
+            data.forEach(row => {
+                tableHtml += '<tr>';
+                headers.forEach(header => {
+                    tableHtml += `<td>${row[header]}</td>`;
                 });
-            } else {
-                // --- DEBUGGING START ---
-                console.log("No matching piket data found for today.");
-                // --- DEBUGGING END ---
-                piketTableBody.innerHTML = '<tr><td colspan="2">Tidak ada data piket untuk hari ini.</td></tr>';
-            }
+                tableHtml += '</tr>';
+            });
+
+            tableHtml += '</tbody></table>';
+            document.getElementById('data-table').innerHTML = tableHtml;
         }
 
-        fetchCSVData();
+        // Panggil fungsi saat DOM selesai dimuat
+        document.addEventListener('DOMContentLoaded', async () => {
+            const data = await fetchGoogleSheetData();
+            if (data) {
+                renderTable(data);
+            }
+        });
     </script>
 </body>
 </html>
