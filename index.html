@@ -31,30 +31,9 @@
         iframe {
             width: 100%;
             height: 800px; /* Sesuaikan tinggi ini sesuai kebutuhan agar spreadsheet terlihat penuh */
-            border: 1px solid #ccc; /* Border opsional untuk iframe */
+            border: none; /* Menghilangkan border default iframe */
             display: block;
             margin: 0 auto;
-        }
-        .instructions {
-            background-color: #f0f0f0;
-            padding: 15px;
-            border-left: 5px solid #4CAF50;
-            margin-top: 30px;
-            margin-bottom: 20px;
-            text-align: left;
-            font-size: 0.9em;
-            color: #555;
-        }
-        .instructions p {
-            margin: 5px 0;
-        }
-        .instructions ol {
-            margin-top: 10px;
-            margin-bottom: 0;
-            padding-left: 20px;
-        }
-        .instructions li {
-            margin-bottom: 5px;
         }
     </style>
 </head>
@@ -62,19 +41,7 @@
     <div class="container">
         <h1>PIKET 8D</h1>
 
-        <div class="instructions">
-            <p>Untuk menampilkan spreadsheet dengan format yang sama persis seperti di Google Sheet, Anda perlu mendapatkan kode *embed* dari Google Sheet itu sendiri. Ikuti langkah-langkah ini:</p>
-            <ol>
-                <li>Buka Google Sheet Anda.</li>
-                <li>Pilih menu **File > Bagikan > Publikasikan ke web**.</li>
-                <li>Pada jendela yang muncul, pilih tab **Sematkan**.</li>
-                <li>Pilih lembar kerja yang ingin Anda sematkan (misalnya, seluruh dokumen atau lembar tertentu).</li>
-                <li>Klik tombol **Publikasikan**.</li>
-                <li>Salin kode `<iframe>` yang diberikan.</li>
-                <li>Tempelkan kode tersebut di bawah baris ini, ganti `https://docs.google.com/spreadsheets/d/e/2PACX-1vR0aRAL1eeeIq5GC-nxExaQWyxG5em_W_Vf1Fug5E1AdqfITNqYGYMzCj7vrMR68WdKbnQOiNDY28Oa/pubhtml?gid=535251432&single=true`.</li>
-            </ol>
-        </div>
-
-        </div>
+        <iframe src="https://docs.google.com/spreadsheets/d/e/2PACX-1vR0aRAL1eeeIq5GC-nxExaQWyxG5em_W_Vf1Fug5E1AdqfITNqYGYMzCj7vrMR68WdKbnQOiNDY28Oa/pubhtml?gid=535251432&single=true"></iframe>
+    </div>
 </body>
 </html>
