@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PIKET 8D</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --green: #4CAF50;
+            --white: #FFFFFF;
+            --yellow: #FFC107;
+            --light-grey: #f2f2f2;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: var(--light-grey);
+            color: #333;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background-color: var(--white);
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        header h1 {
+            color: var(--green);
+            margin: 0;
+            font-size: 2.2em;
+        }
+
+        #piket-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+            padding: 15px;
+            background-color: var(--light-grey);
+            border-radius: 5px;
+            border-left: 5px solid var(--yellow);
+        }
+
+        .info-item strong {
+            color: var(--green);
+        }
+
+        .info-item span {
+            display: block;
+            margin-top: 5px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        table th, table td {
+            border: 1px solid #ddd;
+            padding: 12px;
+            text-align: center;
+        }
+
+        table th {
+            background-color: var(--green);
+            color: var(--white);
+            text-transform: uppercase;
+        }
+
+        table tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        table tr:hover {
+            background-color: #f1f1f1;
+        }
+
+        #loading {
+            text-align: center;
+            font-size: 1.2em;
+            color: #666;
+            margin-top: 50px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>PIKET 8D</h1>
+        </header>
+
+        <section id="loading">
+            loading data...
+        </section>
+
+        <section id="piket-info" class="hidden">
+            <div class="info-item">
+                <strong>HARI:</strong> <span id="piket-day"></span>
+            </div>
+            <div class="info-item">
+                <strong>TANGGAL:</strong> <span id="piket-date"></span>
+            </div>
+        </section>
+
+        <section id="piket-schedule" class="hidden">
+            <table id="piket-table">
+                <thead>
+                    <tr>
+                        <th>TUGAS</th>
+                        <th>PETUGAS</th>
+                    </tr>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+        </section>
+    </div>
+
+    <script>
+        const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vR0aRAL1eeeIq5GC-nxExaQWyxG5em_W_Vf1Fug5E1AdqfITNqYGYMzCj7vrMR68WdKbnQOiNDY28Oa/pub?gid=1092300572&single=true&output=csv';
+        let piketData = [];
+
+        const loadingSection = document.getElementById('loading');
+        const piketInfoSection = document.getElementById('piket-info');
+        const piketScheduleSection = document.getElementById('piket-schedule');
+        const piketTableBody = document.querySelector('#piket-table tbody');
+        const piketDay = document.getElementById('piket-day');
+        const piketDate = document.getElementById('piket-date');
+
+        const tasksMapping = [
+            { label: 'ANGKAT BANGKU', colIndex: 2 }, // C3 in sheet, index 2 in 0-indexed values array
+            { label: 'ANGKAT BANGKU', colIndex: 3 }, // C4 in sheet, index 3
+            { label: 'LAP JENDELA', colIndex: 4 }, // C5
+            { label: 'BUANG SAMPAH', colIndex: 5 }, // C6
+            { label: 'PAPAN TULIS & KOLONG MEJA', colIndex: 6 }, // C7
+            { label: 'BOX HP DAN PANGGIL GURU', colIndex: 7 }, // C8
+            { label: 'MENYAPU', colIndex: 8 }, // C9
+            { label: 'MENYAPU', colIndex: 9 }, // C10
+            { label: 'MENGEPEL', colIndex: 10 }, // C11
+            { label: 'MENGEPEL', colIndex: 11 }  // C12
+        ];
+
+        async function fetchCSVData() {
+            loadingSection.classList.remove('hidden');
+            try {
+                const response = await fetch(CSV_URL);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const csvText = await response.text();
+                parseCSV(csvText);
+            } catch (error) {
+                console.error('Error fetching CSV:', error);
+                // Optionally display an error message on the page
+            } finally {
+                loadingSection.classList.add('hidden');
+            }
+        }
+
+        function parseCSV(csv) {
+            const lines = csv.split('\n').filter(line => line.trim() !== '');
+
+            if (lines.length < 2) { // Need at least header and one data row
+                console.warn('CSV data is empty or malformed.');
+                return;
+            }
+
+            // Assuming the first row is headers, and we need data from the second row onwards.
+            // The problem statement specifies data starts from the second row (index 1 in a 0-indexed array)
+            // Day is A2 (index 0), Date is B2 (index 1)
+            const dataRow = lines[1].split(','); // This is the row for Hari, Tanggal, and the first set of names
+            piketData = lines.slice(2).map(line => line.split(',').map(cell => cell.trim())); // All subsequent rows for names C3-L12
+
+            displayPiketSchedule(dataRow);
+        }
+
+        function displayPiketSchedule(dataRow) {
+            piketInfoSection.classList.remove('hidden');
+            piketScheduleSection.classList.remove('hidden');
+
+            piketDay.textContent = dataRow[0] ? dataRow[0].trim() : 'N/A'; // A2
+            piketDate.textContent = dataRow[1] ? dataRow[1].trim() : 'N/A'; // B2
+
+            piketTableBody.innerHTML = ''; // Clear previous data
+
+            tasksMapping.forEach(task => {
+                const row = piketTableBody.insertRow();
+                const taskCell = row.insertCell();
+                const petugasCell = row.insertCell();
+
+                taskCell.textContent = task.label;
+
+                // Adjust the index to correctly fetch the name from the parsed piketData array
+                // The task.colIndex refers to the original column in the spreadsheet (C=2, D=3, etc.)
+                // piketData is an array of arrays, where each inner array is a row from the CSV
+                // We need to access the correct row for the specific task's "PETUGAS"
+                // The column for PETUGAS is fixed for each task. The problem asks for:
+                // C3, C4, C5, C6, C7, C8, C9, C10, C11, C12
+                // In `piketData` (which starts from line 3, i.e., index 2 of CSV lines array),
+                // C3 means row 0 (index 0 in `piketData`), column 2 (index 2 in that row's array)
+                // C4 means row 1, column 2, and so on...
+                // The `colIndex` in `tasksMapping` is already 0-indexed for the column.
+                // We need to figure out which row (0-9 for C3 to C12)
+                let petugasName = 'N/A';
+                const rowIndex = task.colIndex - 2; // C3 is row 0, C4 is row 1, etc. (colIndex 2 is C, so C3 has colIndex 2 and is the first task (row 0))
+
+                if (piketData[rowIndex] && piketData[rowIndex][task.colIndex] !== undefined) {
+                    petugasName = piketData[rowIndex][task.colIndex];
+                }
+
+                petugasCell.textContent = petugasName;
+            });
+        }
+
+        // Fetch data when the page loads
+        fetchCSVData();
+    </script>
+</body>
+</html>
